@@ -1,0 +1,190 @@
+#! /bin/csh -f
+
+# from 76, increase plw1
+set pwdirct  = /data/hezi/johnson/
+set jobname  = t55
+set previousjobname = t51
+#
+
+#
+# ---------------------------------------------------------------
+#   specify path to directory
+# ---------------------------------------------------------------
+#
+set filepath = $pwdirct/program
+set workpath = $pwdirct/work
+
+
+if ( -d $workpath ) then
+  cp -p $filepath/*.f $workpath/.
+  cp -p $filepath/*.h $workpath/.
+  cp -p $filepath/Makefile $workpath/.
+  cp -p $filepath/insolation.input $workpath/.  
+  cd $workpath 
+else
+  mkdir $workpath 
+  cp -p $filepath/*.f $workpath/.
+  cp -p $filepath/*.h $workpath/.
+  cp -p $filepath/Makefile $workpath/.
+  cp -p $filepath/insolation.input $workpath/.  
+  cd $workpath 
+endif
+
+# ---------------------------------------------------------------
+#   assign  data files 
+# --------------------------------------------------------------
+# unit=10 : restart file for input
+  set file1 = "boxr.dat"
+
+# unit=11 : restart file for output
+  set file2 = "boxr.dat"
+
+# unit=12 : instantaneous data
+  set file3 = "boxplt.dat"
+
+# unit=13 : control file for grads
+  set file4 = ".ctr"
+
+#
+# ---------------------------------------------------------------
+#   generate namelist file
+# ---------------------------------------------------------------
+#
+echo " ===> creating name.list from within the script... "
+cat > coupledata.list << DELIMIT
+ &contrl restart =.true.,
+	 ndbeg =0, 
+	 ndinc =146000000,
+	 nstart=109500000,
+         ndprin=73000,
+	 ndstor=3650000, 
+	 ismth=21,
+	 dtcouple=21600.
+ &end
+
+ &configure coupleflux=.true.,
+	    seaicectr=.true.,
+	    landicectr=.true.,
+	    geochemctr=.false.,
+	    bioctr=.false.
+ &end
+
+ &files  filresi='$file1$previousjobname',
+	 filreso='$file2$jobname',
+	 filplt ='$file3$jobname',
+	 filcnt ='$jobname$file4'
+ &end
+
+ &parameters  L=4.150d+6,1.0d+7,1.0d+7,4.150d+6,
+               width=1.8d+7,1.8d+7,1.8d+7,1.8d+7,
+	       SSTdata=271.,298.,299.,272.,
+	       Sdata=34.0,36.,36.,34.3,
+	       Sref=35.,
+	       Tref=283.,
+	       fl=0.5,0.20,0.35,0.5,
+               fi0=0.5,0.,0.,0.15,
+               fsi0=0.0,0.,0.,0.4,
+               CO2ref=320.,
+	       CO2in=300.731
+ &end
+
+ &constants rhoW=1028.,
+	 alpha=1668.e-7,
+	 beta=0.761d-3,
+         G=9.8,    
+         sigma=5.6701d-8,
+         RR=287.04,
+	 CpA=1004.,
+         CpW=4180.,
+         Ps=1.0d+5,
+         epsilon=0.622,
+         CwRhoW=4.29d+6,
+	 Lice=3.34d+5,
+	 Rhoice=917.,
+	 LH=2.501d+6,
+	 rhoLice=900.
+ &end
+
+ &Oparameters D=4.0d+2,4.0d+2,4.0d+2,4.0d+2,4.d+3,4.d+3,4.d+3,4.d+3,
+	 r=2.6d-4,
+	 gammaS=5.8d-7,
+	 gammaT=5.8d-7,
+	 uppersection=4.5d+9,
+	 lowersection=4.5d+10,
+         horisection=1.2d+14,
+	 Kv=4.20d-8,4.20d-8,4.20d-8,4.20d-8,
+	 Kh=1.5d-4,1.5d-4,1.5d-4,3.5d-4,3.5d-4,3.5d-4,
+	 dsigma=0.10,
+	 dsigma2=0.25
+ &end
+
+ &Aparameters Gama0=1.15d-8,
+	 albedoL=0.20,
+	 albedoI=0.90,
+	 albedoSI=0.65,
+	 albedoS=0.07,
+	 albedoC=0.30,
+	 Solar=244.67,381.95,381.95,244.67,
+	 KT=15.5d+20,
+	 KWa=5.4d+13,
+	 KWa2=3.3d+8,
+	 Kapa=0.03,
+	 Plw0=0.59,0.53,0.51,0.73,
+	 RH=0.7,0.7,0.7,0.7
+ &end
+
+ &SeaIcepar Di=1.5,4.,4.,2.,
+            Tice=274.0
+ &end
+
+ &LandIcepar Igama=10.0,
+	     TLice1=276.,
+	     TLice2=270.,
+	     Icoef1=3.17d-2,
+	     IceHc=2200.,
+	     T12preci=0.0,
+	     T32preci=0.0,
+	     T34preci=0.0,
+	     alphaP=0.0,
+	     T1melt=360.0,
+	     T4melt=360.
+ &end
+
+ &BioChem    CT0=2257.,
+	     AT0=2371.,
+	     pv0=5.d-4,
+	     pc10=0.0000002,0.000002,0.00002,0.00000002,
+	     PO40=2.09,
+	     O20=200. ,
+	     RedC0=122,
+	     RedN=16,
+	     RedO2=-177,
+	     h=0.00002
+ &end 
+    
+ &Perturbation LiSp=0.00,
+	       LiNp=0.00,
+	       Tper=0.0,0.0,0.0,0.0,
+	       CTp=0.0,0.0,0.0,0.0
+ &end
+
+DELIMIT
+#
+# ---------------------------------------------------------------
+#   compile & execute model
+# ---------------------------------------------------------------
+#
+
+make
+
+echo " ===> start calculating .... "
+nice +15 time /data/hezi/johnson/work/coup51
+
+
+# ---------------------------------------------------------------
+#   end 
+# ---------------------------------------------------------------
+
+
+
+
